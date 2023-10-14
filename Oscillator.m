@@ -1,0 +1,65 @@
+classdef Oscillator < audioPlugin
+    
+    properties
+        Type = 'sine'; % Default to sine wave
+        Freq = 440; 
+        Gain = 1;
+    end
+
+    properties (Access=private)
+        Buffer = 0;
+        SampleRate = 0;
+        Phase = 0; 
+    end
+    
+    properties (Constant)
+        PluginInterface = audioPluginInterface(...
+            audioPluginParameter('Type', 'Mapping', ...
+            {'enum','Sine','Square','Triangle','Sawtooth'}),...
+            audioPluginParameter('Freq', 'Mapping',{'lin',20,12000}), ...
+            audioPluginParameter('Gain', 'Mapping',{'lin',0, 1.0}), ...
+            audioPluginParameter('Detune', 'Mapping', {'lin', -12, 12}));
+
+    end
+    methods
+        function plugin = Oscillator(bufferSize, sampleRate)
+            plugin.Buffer = zeros(bufferSize, 1);
+            plugin.SampleRate = sampleRate;
+            plugin.Phase = 0; 
+        end
+        
+        function [audio, plugin] = process(plugin)
+            phaseInc = (plugin.Freq)/plugin.SampleRate;
+            
+            for i = 1:length(plugin.Buffer)
+
+                plugin.Phase = mod(plugin.Phase + phaseInc, 1);
+                
+                switch plugin.Type
+                    case 'Sine'
+                        plugin.Buffer(i) = plugin.Gain * sin(2*pi*plugin.Phase);
+                        
+                    case 'Square'
+                        if plugin.Phase < 0.5
+                            plugin.Buffer(i) = plugin.Gain;
+                        else
+                            plugin.Buffer(i) = -plugin.Gain;
+                        end
+                        
+                    case 'Triangle'
+                        plugin.Buffer(i) = plugin.Gain * (2.0*abs(plugin.Phase*2-1)-1);
+                        
+                    case 'Sawtooth'
+                        plugin.Buffer(i) = plugin.Gain * (plugin.Phase*2 - 1);
+                        
+                    otherwise
+                        plugin.Buffer(i) = plugin.Gain * sin(2*pi*plugin.Phase);
+                end
+                
+            end
+            audio = plugin.Buffer;
+        end
+        
+    end
+    
+end
